@@ -82,9 +82,19 @@ namespace eCommerce.API.Controllers
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
-            _repository.Delete(id);
+            Usuario usuario = _repository.Get(id);
 
-            return Ok();
+            if (usuario != null)
+            {
+                _repository.Delete(id);
+
+                return Ok(new
+                {
+                    message = $"Usuario {usuario.Nome} excluído com sucesso."
+                });
+            }
+
+            return BadRequest();
         }
 
     }

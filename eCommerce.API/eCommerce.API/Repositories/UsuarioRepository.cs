@@ -2,56 +2,59 @@
 using eCommerce.API.Models;
 using System;
 using System.Collections.Generic;
+using System.Data; // Adicionado para poder usar o IDbConnection
+using System.Data.SqlClient;
 using System.Linq;
+using Dapper; // Adcionando o Dapper para estender a comunicação com o Banco de Dados da variável _connection.
 using System.Threading.Tasks;
 
 namespace eCommerce.API.Repositories
 {
     public class UsuarioRepository : IUsuarioRepository
     {
-
-
-        // Criando um db Fake.
-        private static List<Usuario> _db = new List<Usuario>()
+        private IDbConnection _connection;
+        public UsuarioRepository()
         {
-            new Usuario(){ Id = 1, Nome = "Felipe Rodrigues", Email = "felipe.rodrigues@gmail.com" },
-            new Usuario() { Id = 2, Nome = "Marcelo Rodrigues", Email = "marcelo.rodrigues@gmail.com" },
-            new Usuario() { Id = 3, Nome = "Jessica Rodrigues", Email = "jessica.rodrigues@gmail.com"}
-        };
+           _connection = new SqlConnection(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=eCommerce;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False");
+        }
 
+        // Conexão com Dapper: Micro-ORM.
         public List<Usuario> Get()
         {
-            return _db;
+            // Indica que irá executar uma query cujo terá um retorno do tipo Usuario e força retornar uma lista.
+            return _connection.Query<Usuario>("Select * from Usuarios").ToList();
         }
 
         public Usuario Get(int id)
         {
-            return _db.FirstOrDefault(u => u.Id == id); // retornando um usuario com o Linq
+            // Foi utilizado o QuerySingleOrDefault<> pois precisamos retornar apenas um usuário e se não existir retornará o default do tipo Usuario que é null.
+            // Foi colocado via parâmetro (Id = @Id", new { Id = id }) - para evitar o sql injection sendo enviado como um objeto anônimo.
+            // ATENÇÃO: O nome da propriedade do objeto anônimo deve ser igual ao parâmetro exemplo: Id = @TESTE", new { TESTE = id }
+            return _connection.QuerySingleOrDefault<Usuario>("Select * from Usuarios Where Usuarios.Id = @Id", new { Id = id });
         }
 
         public void Insert(Usuario usuario)
         {
-            var ultimoUsuario = _db.LastOrDefault();
+            // Cria o insert com parâmetros a serem passados e usa um select no final para retornar o id da inserção.
+            string sql = "Insert Into Usuarios(Nome, Email, Sexo, RG, CPF, NomeMae, SituacaoCadastro, DataCadastro) " +
+                "Values (@Nome, @Email, @Sexo, @RG, @CPF, @NomeMae, @SituacaoCadastro, @DataCadastro); Select CAST(SCOPE_IDENTITY() AS INT);";
 
-            // criando ids para novos usuarios.
-            if (ultimoUsuario == null)
-                usuario.Id = 1;
-            else
-                usuario.Id = ultimoUsuario.Id + 1;
-
-
-            _db.Add(usuario); // adicionando um novo usuario
+            // Poderia ser utilizado um objeto anônimo igual o exemplo: new { Nome = "jose"} etc, mas neste caso é melhor o objeto que já tem as propriedade equivalentes.
+            // Faz o retorno do id do usuário inserido.
+            usuario.Id = _connection.Query<int>(sql, usuario).Single();
         }
 
         public void Update(Usuario usuario)
         {
-            _db.Remove(_db.FirstOrDefault(u => u.Id == usuario.Id)); // removendo o usuario 
-            _db.Add(usuario);
+            string sql = "Update Usuarios Set Nome = @Nome, Email = @Email, Sexo = @Sexo, RG = @RG, CPF = @CPF, NomeMae = @NomeMae, SituacaoCadastro = @SituacaoCadastro, DataCadastro = @DataCadastro" +
+                " Where Usuarios.Id = @Id";
+
+            _connection.Execute(sql, usuario);
         }
 
         public void Delete(int id)
         {
-            _db.Remove(_db.FirstOrDefault(u => u.Id == id)); // removendo o usuario por id.
+            _connection.Execute("Delete from Usuarios Where Usuarios.Id = @Id", new { Id = id });
         }
     }
 }

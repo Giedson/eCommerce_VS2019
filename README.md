@@ -97,7 +97,34 @@ ATENÇÃO: {{url}} é a variável criada em Environments, /api/Usuarios é o cam
 ATENÇÃO: {{url}} é a variável criada em Environments, /api/Usuarios é o caminho contido na controllers de usuários e /2 é o id do usuário.
 
 
+DAPPER
+Criando o banco de dados:
+- View/ Sql Server Object Explorer
+- Expandir e clicar com botão direito em Databases, add new database e cololar o nome do banco de dados com eCommerce.
+- O banco está localizado na pasta do usuário local exemplo(C:\Users\gieds\AppData\Local\Microsoft\Microsoft SQL Server Local DB\Instances\mssqllocaldb)
+
+- Para execução de querys clicar com botão direito no banco e acessar new query.
+- Foi executado scripts para criar as tabelas e informações do bando de dados de exemplo.
+
+Criando o modelos de acordo com as tabelas.
+- Criar as classes Contato, Departamento e EnderecoEntrega conforme a estrutura de colunas criado no banco de dados.
+- Inserir os relacionamentos(one to one, one to many e many to many) que serão baseados em composições e coleções.
+
+Instalando o Dapper
+- Clicar com o botão direito em Denpendecias/Nuget Package Manager
+- Procurar por Dapper e instalar o pacote: Dapper por Sam Saffron escolher a versão mais recente.
+- Utilizar a classe SqlConnection e instalar o pacote: System.Data.Sql.Client.
+- Para pegar a string de conexão é só clicar em botão direito no banco de dados, escolher propriedades e localizar o item connection string que contém a string de conexão do banco de dados.
+- Na classe de exemplo UsuarioRepository.cs adicionar a biblioteca Dapper para extender as funcionalidades do IDbConnnerction.
+- Realizar as alterações necessárias para os Selects, Inserts, Updates e Deletes.
+
+--------------------------
  
+
+Sites Importantes: 
+- Para facilitar podemos utilizar o site que contém a maior parte das urls de conexões de diversos tipos de bancos: 
+> https://www.connectionstrings.com/
+
 
 Atalhos:
 - CTRL + . --> Utiliza o interlicense para verifcar as sugestões de adição de classes relacionadas;
