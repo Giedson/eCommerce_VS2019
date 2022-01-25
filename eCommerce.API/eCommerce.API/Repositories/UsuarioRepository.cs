@@ -22,11 +22,37 @@ namespace eCommerce.API.Repositories
         public List<Usuario> Get()
         {
             // Indica que irá executar uma query cujo terá um retorno do tipo Usuario e força retornar uma lista.
-            return _connection.Query<Usuario, Contato, Usuario>("SELECT * FROM Usuarios U LEFT JOIN Contatos C ON C.UsuarioId = U.Id", (usuario, contato) =>
+            // return _connection.Query<Usuario, Contato, Usuario>("SELECT * FROM Usuarios U LEFT JOIN Contatos C ON C.UsuarioId = U.Id", (usuario, contato) =>
+
+            // Criando a lista de usuários para evitar a repetição dos múltiplos relacionamentos.
+            // Obs.: Preferencialmente utilizar o Dictionary ao invés de lista.
+            List<Usuario> usuarios = new List<Usuario>();
+
+            string sql = "SELECT U.*, C.*, EE.* FROM Usuarios U " +
+                "LEFT JOIN Contatos C ON C.UsuarioId = U.Id " +
+                "LEFT JOIN EnderecosEntrega EE ON EE.UsuarioId = U.Id";
+
+            _connection.Query<Usuario, Contato, EnderecoEntrega, Usuario>(sql, (usuario, contato, enderecoEntrega) =>
             {
-                usuario.Contato = contato;
+                //ATENÇÃO: a execução abaixo é efetuada uma vez para cada linha de retorno da consulta sql.
+
+                // Verifica se está adicionando a primeira vez
+                if (usuarios.SingleOrDefault(a => a.Id == usuario.Id) == null)
+                {
+                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega.
+                    usuario.Contato = contato;
+                    usuarios.Add(usuario);
+                } 
+                else
+                {
+                    usuario = usuarios.SingleOrDefault(a => a.Id == usuario.Id); // Adiciona apenas a referencia.
+                }
+
+                usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
                 return usuario;
-            }).ToList();
+            });
+
+            return usuarios;
         }
 
         public Usuario Get(int id)
@@ -34,15 +60,43 @@ namespace eCommerce.API.Repositories
             // Foi utilizado o QuerySingleOrDefault<> pois precisamos retornar apenas um usuário e se não existir retornará o default do tipo Usuario que é null.
             // Foi colocado via parâmetro (Id = @Id", new { Id = id }) - para evitar o sql injection sendo enviado como um objeto anônimo.
             // ATENÇÃO: O nome da propriedade do objeto anônimo deve ser igual ao parâmetro exemplo: Id = @TESTE", new { TESTE = id }
-            // Os parâmetros informados em: Query<Usuario, Contato, Usuario> indica as tabelas relacionadas na query e o ultimo parâmetro o tipo de objeto que deverá ser retornado.
+            // Os parâmetros informados em: Query<Usuario, Contato, Usuario> indicam as tabelas relacionadas na query e o ultimo parâmetro o tipo de objeto que deverá ser retornado.
             // É utilizado uma função anônima porque os dados do Contato devem ser adicionados na propriedade contato.
-            return _connection.Query<Usuario, Contato, Usuario>(
-                "SELECT * FROM Usuarios U LEFT JOIN Contatos C ON C.UsuarioId = U.Id " +
-                "WHERE U.Id = @Id", (usuario, contato) =>
+
+
+            // Criando a lista de usuários para evitar a repetição dos múltiplos relacionamentos com enderecoEntrega.
+            // Obs.: Preferencialmente utilizar o Dictionary ao invés de lista.
+            List<Usuario> usuarios = new List<Usuario>();
+
+            string sql = "SELECT U.*, C.*, EE.* FROM Usuarios U " +
+                "LEFT JOIN Contatos C ON C.UsuarioId = U.Id " +
+                "LEFT JOIN EnderecosEntrega EE ON EE.UsuarioId = U.Id " +
+                "WHERE U.Id = @Id";
+
+            _connection.Query<Usuario, Contato, EnderecoEntrega, Usuario>(sql, (usuario, contato, enderecoEntrega) =>
+            {
+                //ATENÇÃO: a execução abaixo é efetuada uma vez para cada linha de retorno da consulta sql.
+
+                // Verifica se está adicionando a primeira vez
+                if (usuarios.SingleOrDefault(a => a.Id == usuario.Id) == null)
                 {
-                    usuario.Contato = contato; // Indica que na propriedade Contato deverá ser armazenado o objeto contato.
-                    return usuario;
-                }, new { Id = id }).SingleOrDefault();
+                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega.
+                    usuario.Contato = contato;
+                    usuarios.Add(usuario);
+                }
+                else
+                {
+                    usuario = usuarios.SingleOrDefault(a => a.Id == usuario.Id); // Adiciona apenas a referencia.
+                }
+
+                usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
+                return usuario;
+            }, new
+            {
+                Id = id
+            });
+
+            return usuarios.SingleOrDefault();
         }
 
         public void Insert(Usuario usuario)
@@ -61,11 +115,23 @@ namespace eCommerce.API.Repositories
                 // _connection.Query<int>(sqlContato, usuario.Contato, transaction) - Executa a inserção passando a query de inserção, o objeto que contém as informações e a transação que está aberta.
                 usuario.Id = _connection.Query<int>(sql, usuario, transaction).Single(); // Retorna o Id do Usuario.
 
+                // Fazendo a inserção do Contato.
                 if (usuario.Contato != null)
                 {
                     usuario.Contato.UsuarioId = usuario.Id; // Adiciona no objeto o usuário que acabou de ser inserido no banco de dados
                     string sqlContato = "Insert Into Contatos(UsuarioId, Telefone, Celular) Values (@UsuarioId, @Telefone, @Celular); Select CAST(SCOPE_IDENTITY() AS INT);";
                     usuario.Contato.Id = _connection.Query<int>(sqlContato, usuario.Contato, transaction).Single(); // Retorna o Id do Contato
+                }
+
+                // Fazendo a inserção do Endereco de Entrega
+                if (usuario.EnderecosEntrega != null && usuario.EnderecosEntrega.Count > 0)
+                {
+                    foreach(var enderecoEntrega in usuario.EnderecosEntrega)
+                    {
+                        enderecoEntrega.UsuarioId = usuario.Id;
+                        string sqlEndereco = "INSERT INTO EnderecosEntrega(UsuarioId, NomeEndereco, CEP, Estado, Cidade, Bairro, Endereco, Numero, Complemento) VALUES (@UsuarioId, @NomeEndereco, @CEP, @Estado, @Cidade, @Bairro, @Endereco, @Numero, @Complemento); Select CAST(SCOPE_IDENTITY() AS INT);";
+                        enderecoEntrega.Id = _connection.Query<int>(sqlEndereco, enderecoEntrega, transaction).Single(); // Retorna o Id do EnderecoEntrega.
+                    }
                 }
 
                 transaction.Commit(); // Se as duas inserções transações ocorrerem com sucesso efetuamos o commit no banco de dados.
@@ -106,12 +172,27 @@ namespace eCommerce.API.Repositories
                 // _connection.Query<int>(sql, usuario, transaction) - Executa a inserção passando a query de inserção, o objeto que contém as informações e a transação que está aberta.
                 _connection.Execute(sql, usuario, transaction);
 
-                if(usuario.Contato != null)
+                if (usuario.Contato != null)
                 {
                     // Atualizando apenas o contato.
                     string sqlContato = "Update Contatos Set Telefone = @Telefone, Celular = @Celular Where Id = @Id";
                     // _connection.Query<int>(sqlContato, usuario.Contato, transaction) - Executa a inserção passando a query de inserção, o objeto que contém as informações e a transação que está aberta.
                     _connection.Execute(sqlContato, usuario.Contato, transaction);
+                }
+
+                // Por se tratar de um relacionamento muitos para muitos foi optado por eliminar as informações.
+                string sqlDeletarEnderecosEntrega = "DELETE FROM EnderecosEntrega WHERE UsuarioId = @Id";
+                _connection.Execute(sqlDeletarEnderecosEntrega, usuario, transaction);
+
+                // Fazendo novamente a inserção do Endereco de Entrega
+                if (usuario.EnderecosEntrega != null && usuario.EnderecosEntrega.Count > 0)
+                {
+                    foreach (var enderecoEntrega in usuario.EnderecosEntrega)
+                    {
+                        enderecoEntrega.UsuarioId = usuario.Id;
+                        string sqlEndereco = "INSERT INTO EnderecosEntrega(UsuarioId, NomeEndereco, CEP, Estado, Cidade, Bairro, Endereco, Numero, Complemento) VALUES (@UsuarioId, @NomeEndereco, @CEP, @Estado, @Cidade, @Bairro, @Endereco, @Numero, @Complemento); Select CAST(SCOPE_IDENTITY() AS INT);";
+                        enderecoEntrega.Id = _connection.Query<int>(sqlEndereco, enderecoEntrega, transaction).Single(); // Retorna o Id do EnderecoEntrega.
+                    }
                 }
 
                 transaction.Commit(); // Se as duas inserções transações ocorrerem com sucesso efetuamos o commit no banco de dados.
