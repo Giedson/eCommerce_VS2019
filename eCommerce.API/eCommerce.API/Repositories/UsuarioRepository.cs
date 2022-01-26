@@ -28,27 +28,46 @@ namespace eCommerce.API.Repositories
             // Obs.: Preferencialmente utilizar o Dictionary ao invés de lista.
             List<Usuario> usuarios = new List<Usuario>();
 
-            string sql = "SELECT U.*, C.*, EE.* FROM Usuarios U " +
+            // Atenção como UsuariosDepartamentos não está sendo Mapeado, deve ser desconsiderado da query no retorno da informação.
+            string sql = "SELECT U.*, C.*, EE.*, D.* FROM Usuarios U " +
                 "LEFT JOIN Contatos C ON C.UsuarioId = U.Id " +
-                "LEFT JOIN EnderecosEntrega EE ON EE.UsuarioId = U.Id";
+                "LEFT JOIN EnderecosEntrega EE ON EE.UsuarioId = U.Id " +
+                "LEFT JOIN UsuariosDepartamentos UD ON UD.UsuarioId = U.Id " +
+                "LEFT JOIN Departamentos D ON UD.DepartamentoId = D.Id";
 
-            _connection.Query<Usuario, Contato, EnderecoEntrega, Usuario>(sql, (usuario, contato, enderecoEntrega) =>
+            // Mapeando as tabelas com o Dapper.
+            _connection.Query<Usuario, Contato, EnderecoEntrega, Departamento, Usuario>(sql, (usuario, contato, enderecoEntrega, departamento) =>
             {
                 //ATENÇÃO: a execução abaixo é efetuada uma vez para cada linha de retorno da consulta sql.
 
-                // Verifica se está adicionando a primeira vez
-                if (usuarios.SingleOrDefault(a => a.Id == usuario.Id) == null)
+                // Verificação do usuário, se está adicionando a primeira vez
+                // Necessário pois ao adicionar o Endereço de Entrega na query passou a existir uma duplicidade de Usuários.
+                if (usuarios.SingleOrDefault(u => u.Id == usuario.Id) == null)
                 {
-                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega.
+                    usuario.Departamentos = new List<Departamento>();// Cria uma lista de Departamentos vazia.
+                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega vazia.
                     usuario.Contato = contato;
                     usuarios.Add(usuario);
                 } 
                 else
                 {
-                    usuario = usuarios.SingleOrDefault(a => a.Id == usuario.Id); // Adiciona apenas a referencia.
+                    usuario = usuarios.SingleOrDefault(u => u.Id == usuario.Id); // Adiciona apenas a referencia.
                 }
 
-                usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
+                // Verificação do Endereço de Entrega. Checa se já existe um endereço de entrega.
+                // Necessário pois ao adicionar o Departamento na query passou a existir uma duplicidade de endereços de entrega
+                if(usuario.EnderecosEntrega.SingleOrDefault(e => e.Id == enderecoEntrega.Id) == null)
+                {
+                    usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
+                }
+
+                // Adicionando os Departamentos.
+                // Necessário pois o Departamento se repete na query para o usuário sendo necessário criar um objeto livre de repetição.
+                if (usuario.Departamentos.SingleOrDefault(d => d.Id == departamento.Id) == null)
+                {
+                    usuario.Departamentos.Add(departamento); // Adicionando o departamento.
+                }
+
                 return usuario;
             });
 
@@ -68,35 +87,54 @@ namespace eCommerce.API.Repositories
             // Obs.: Preferencialmente utilizar o Dictionary ao invés de lista.
             List<Usuario> usuarios = new List<Usuario>();
 
-            string sql = "SELECT U.*, C.*, EE.* FROM Usuarios U " +
+            // Atenção como UsuariosDepartamentos não está sendo Mapeado, deve ser desconsiderado da query no retorno da informação.
+            string sql = "SELECT U.*, C.*, EE.*, D.* FROM Usuarios U " +
                 "LEFT JOIN Contatos C ON C.UsuarioId = U.Id " +
                 "LEFT JOIN EnderecosEntrega EE ON EE.UsuarioId = U.Id " +
+                "LEFT JOIN UsuariosDepartamentos UD ON UD.UsuarioId = U.Id " +
+                "LEFT JOIN Departamentos D ON UD.DepartamentoId = D.Id " +
                 "WHERE U.Id = @Id";
 
-            _connection.Query<Usuario, Contato, EnderecoEntrega, Usuario>(sql, (usuario, contato, enderecoEntrega) =>
+            // Mapeando as tabelas com o Dapper.
+            _connection.Query<Usuario, Contato, EnderecoEntrega, Departamento, Usuario>(sql, (usuario, contato, enderecoEntrega, departamento) =>
             {
                 //ATENÇÃO: a execução abaixo é efetuada uma vez para cada linha de retorno da consulta sql.
 
-                // Verifica se está adicionando a primeira vez
-                if (usuarios.SingleOrDefault(a => a.Id == usuario.Id) == null)
+                // Verificação do usuário, se está adicionando a primeira vez
+                // Necessário pois ao adicionar o Endereço de Entrega na query passou a existir uma duplicidade de Usuários.
+                if (usuarios.SingleOrDefault(u => u.Id == usuario.Id) == null)
                 {
-                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega.
+                    usuario.Departamentos = new List<Departamento>();// Cria uma lista de Departamentos vazia.
+                    usuario.EnderecosEntrega = new List<EnderecoEntrega>(); // Cria uma lista de endereços de entrega vazia.
                     usuario.Contato = contato;
                     usuarios.Add(usuario);
                 }
                 else
                 {
-                    usuario = usuarios.SingleOrDefault(a => a.Id == usuario.Id); // Adiciona apenas a referencia.
+                    usuario = usuarios.SingleOrDefault(u => u.Id == usuario.Id); // Adiciona apenas a referencia.
                 }
 
-                usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
+                // Verificação do Endereço de Entrega. Checa se já existe um endereço de entrega.
+                // Necessário pois ao adicionar o Departamento na query passou a existir uma duplicidade de endereços de entrega
+                if (usuario.EnderecosEntrega.SingleOrDefault(e => e.Id == enderecoEntrega.Id) == null)
+                {
+                    usuario.EnderecosEntrega.Add(enderecoEntrega); // Adicionando o endereço de entrega.
+                }
+
+                // Adicionando os Departamentos.
+                // Necessário pois o Departamento se repete na query para o usuário sendo necessário criar um objeto livre de repetição.
+                if (usuario.Departamentos.SingleOrDefault(d => d.Id == departamento.Id) == null)
+                {
+                    usuario.Departamentos.Add(departamento); // Adicionando o departamento.
+                }
+
                 return usuario;
             }, new
             {
                 Id = id
             });
 
-            return usuarios.SingleOrDefault();
+            return usuarios.SingleOrDefault(); // Retorna apenas um único registro.
         }
 
         public void Insert(Usuario usuario)
@@ -133,6 +171,19 @@ namespace eCommerce.API.Repositories
                         enderecoEntrega.Id = _connection.Query<int>(sqlEndereco, enderecoEntrega, transaction).Single(); // Retorna o Id do EnderecoEntrega.
                     }
                 }
+
+                // Fazendo a inserção do Departamento - Apenas os vínculos.
+                if (usuario.Departamentos != null && usuario.Departamentos.Count > 0)
+                {
+                    foreach (var departamento in usuario.Departamentos)
+                    {
+                        string sqlUsuariosDepartamentos = "INSERT INTO UsuariosDepartamentos(UsuarioId, DepartamentoId) VALUES (@UsuarioId, @DepartamentoId)";
+                        // Não retorna o Id pois a tabela UsuariosDepartamentos não está sendo mapeada no Dapper.
+                        // Portanto pode ser apenas executado.
+                        _connection.Execute(sqlUsuariosDepartamentos, new { UsuarioId = usuario.Id, DepartamentoId = departamento.Id}, transaction); 
+                    }
+                }
+
 
                 transaction.Commit(); // Se as duas inserções transações ocorrerem com sucesso efetuamos o commit no banco de dados.
 
@@ -192,6 +243,22 @@ namespace eCommerce.API.Repositories
                         enderecoEntrega.UsuarioId = usuario.Id;
                         string sqlEndereco = "INSERT INTO EnderecosEntrega(UsuarioId, NomeEndereco, CEP, Estado, Cidade, Bairro, Endereco, Numero, Complemento) VALUES (@UsuarioId, @NomeEndereco, @CEP, @Estado, @Cidade, @Bairro, @Endereco, @Numero, @Complemento); Select CAST(SCOPE_IDENTITY() AS INT);";
                         enderecoEntrega.Id = _connection.Query<int>(sqlEndereco, enderecoEntrega, transaction).Single(); // Retorna o Id do EnderecoEntrega.
+                    }
+                }
+
+                // Por se tratar de um relacionamento muitos para muitos foi optado por eliminar as informações.
+                string sqlDeletarUsuariosDepartamentos = "DELETE FROM UsuariosDepartamentos WHERE UsuarioId = @Id";
+                _connection.Execute(sqlDeletarUsuariosDepartamentos, usuario, transaction);
+
+                // Fazendo a inserção do Departamento - Apenas os vínculos.
+                if (usuario.Departamentos != null && usuario.Departamentos.Count > 0)
+                {
+                    foreach (var departamento in usuario.Departamentos)
+                    {
+                        string sqlUsuariosDepartamentos = "INSERT INTO UsuariosDepartamentos(UsuarioId, DepartamentoId) VALUES (@UsuarioId, @DepartamentoId)";
+                        // Não retorna o Id pois a tabela UsuariosDepartamentos não está sendo mapeada no Dapper.
+                        // Portanto pode ser apenas executado.
+                        _connection.Execute(sqlUsuariosDepartamentos, new { UsuarioId = usuario.Id, DepartamentoId = departamento.Id }, transaction);
                     }
                 }
 

@@ -119,6 +119,11 @@ Instalando o Dapper
 - Realizar as alterações necessárias para os Selects, Inserts, Updates e Deletes.
 
 --------------------------
+
+Dapper.Contrib
+Biblioteca para trabalhar com apenas uma tabela não podendo efetuar a execução de Joins complexos.
+
+
  
 
 Sites Importantes: 
@@ -130,3 +135,4 @@ Atalhos:
 - CTRL + . --> Utiliza o interlicense para verifcar as sugestões de adição de classes relacionadas;
 - prop + tab + tab --> gera um escopo de declaração de métodos get e set;
 - ctor + tab + tab --> gera um construtor para a classe;
+- CTRL + R --> Executar duas vezes para renomear vários intes de forma mais rápida.
