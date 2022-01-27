@@ -121,10 +121,16 @@ Instalando o Dapper
 --------------------------
 
 Dapper.Contrib
-Biblioteca para trabalhar com apenas uma tabela não podendo efetuar a execução de Joins complexos.
+Biblioteca para trabalhar com apenas uma tabela não podendo efetuar a execução de vários Joins complexos.
+Utilizado para fazer um CRUD simples.
 
+Instalando o Dapper.Contrib
+- Clicar com o botão direito em Denpendecias/Nuget Package Manager
+- Procurar por Dapper.Contrib e instalar o pacote: Dapper.Contrib por Sam Saffron escolher a versão mais recente.
 
  
+
+
 
 Sites Importantes: 
 - Para facilitar podemos utilizar o site que contém a maior parte das urls de conexões de diversos tipos de bancos: 
